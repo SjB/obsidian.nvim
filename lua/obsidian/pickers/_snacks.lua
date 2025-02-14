@@ -3,10 +3,9 @@ local snacks_picker = require "snacks.picker"
 local Path = require "obsidian.path"
 local abc = require "obsidian.abc"
 local Picker = require "obsidian.pickers.picker"
-local log = require "obsidian.log"
 
 local function debug_once(msg, ...)
-    log.warn_once(msg, vim.log.levels.DEBUG, ...)
+--    vim.notify(msg .. vim.inspect(...))
 end
 
 ---@param mapping table
@@ -44,10 +43,8 @@ local SnacksPicker = abc.new_class({
 SnacksPicker.find_files = function(self, opts)
     opts = opts or {}
 
-    debug_once("find files opts:", opts)
-
     ---@type obsidian.Path
-    local dir = opts.dir and Path:new(opts.dir) or self.client.dir
+    local dir = opts.dir.filename and Path:new(opts.dir.filename) or self.client.dir
 
     local map = vim.tbl_deep_extend("force", {},
         notes_mappings(opts.selection_mappings))
@@ -55,26 +52,28 @@ SnacksPicker.find_files = function(self, opts)
     local pick_opts = vim.tbl_extend("force", map or {}, {
         source = "files",
         title = opts.prompt_title,
-        cwd = opts.dir.filename,
+        cwd = tostring(dir),
         confirm = function(picker, item, action)
             picker:close()
             if item then
                 if opts.callback then
+                    debug_once("find files callback: ", item)
                     opts.callback(item._path)
                 else
+                    debug_once("find files jump: ", item)
                     snacks_picker.actions.jump(picker, item, action)
                 end
             end
         end,
     })
-    snacks_picker.pick(pick_opts)
+    local t = snacks_picker.pick(pick_opts)
 end
 
 ---@param opts obsidian.PickerGrepOpts|? Options.
 SnacksPicker.grep = function(self, opts)
     opts = opts or {}
 
-    debug_once("grep opts :", opts)
+    debug_once("grep opts : ", opts)
 
     ---@type obsidian.Path
     local dir = opts.dir and Path:new(opts.dir) or self.client.dir
@@ -85,13 +84,15 @@ SnacksPicker.grep = function(self, opts)
     local pick_opts = vim.tbl_extend("force", map or {}, {
         source = "grep",
         title = opts.prompt_title,
-        cwd = opts.dir.filename,
+        cwd = dir,
         confirm = function(picker, item, action)
             picker:close()
             if item then
                 if opts.callback then
+                    debug_once("grep callback: ", item)
                     opts.callback(item._path or item.filename)
                 else
+                    debug_once("grep jump: ", item)
                     snacks_picker.actions.jump(picker, item, action)
                 end
             end
@@ -145,8 +146,10 @@ SnacksPicker.pick = function(self, values, opts)
             picker:close()
             if item then
                 if opts.callback then
+                    debug_once("pick callback: ", item)
                     opts.callback(item.value)
                 else
+                    debug_once("pick jump: ", item)
                     snacks_picker.actions.jump(picker, item, action)
                 end
             end
